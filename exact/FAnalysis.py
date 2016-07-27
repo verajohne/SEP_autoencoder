@@ -20,7 +20,7 @@ class FAnalysis(object):
 		
 		self.n = n
 		self.W = RS.normal(0,1, size = (dimx,dimz))
-		self.sigx = 0.0000000000000001#RS.normal(0,1)
+		self.sigx = 0.000000000001#RS.normal(0,1)
 		self.dimz = dimz
 		self.dimx = dimx
 		
@@ -115,10 +115,7 @@ class FAnalysis(object):
 		temp = np.dot(self.W.transpose(), np.linalg.inv(a))
 		cov = np.linalg.inv(np.identity(2) + np.dot(temp, self.W))
 		
-		print mean
-		print""
-		print cov
-		
+
 		data = np.random.multivariate_normal(mean, cov, 20000)
 		#data2 = np.random.multivariate_normal(mean, cov, 5)
 		#print "Data: ", data == data2
@@ -128,14 +125,11 @@ class FAnalysis(object):
 		#sns.jointplot(x="x", y="y", data=df)
 		xlim = (mean[0] - 3*np.sqrt(cov[0][0]),mean[0] + 3*np.sqrt(cov[0][0]))
 		ylim = (mean[1] - 3*np.sqrt(cov[1][1]),mean[1] + 3*np.sqrt(cov[1][1]))
-		sns.jointplot(x="x", y="y", data=df, kind="kde", xlim = xlim, ylim = ylim)
+		sns.jointplot(x="x", y="y", data=df, kind="kde", stat_func = None, xlim = xlim, ylim = ylim)
 		
+		#approx
 		epcov, epmeans, norms = self.EP()
 		epmean, epcov = gauss.prod_gauss(epmeans[index], np.zeros(2), epcov, np.identity(2))
-		#print mean == epmean
-		#print epcov == cov
-		print sp.linalg.norm(mean - epmean)
-		print sp.linalg.norm(cov - epcov)
 		
 		data = RS.multivariate_normal(epmean, epcov, 20000)
 
@@ -143,8 +137,15 @@ class FAnalysis(object):
 		#sns.jointplot(x="x", y="y", data=df)
 		xlim = (epmean[0] - 3*np.sqrt(epcov[0][0]),epmean[0] + 3*np.sqrt(epcov[0][0]))
 		ylim = (epmean[1] - 3*np.sqrt(epcov[1][1]),epmean[1] + 3*np.sqrt(epcov[1][1]))
-		sns.jointplot(x="x", y="y", data=df, kind="kde", xlim = xlim, ylim = ylim)
-
+		sns.jointplot(x="x", y="y", data=df, kind="kde",stat_func= None, xlim = xlim, ylim = ylim)
+		
+		print "exact"
+		print cov
+		print mean
+		print "EP-exact"
+		print epcov
+		print epmean
+		
 	def plot_approx_posterior(self, index):
 		cov, means, norms = self.EP()
 		mean = means[index]
@@ -157,7 +158,7 @@ class FAnalysis(object):
 		#sns.jointplot(x="x", y="y", data=df)
 		xlim = (mean[0] - 3*np.sqrt(cov[0][0]),mean[0] + 3*np.sqrt(cov[0][0]))
 		ylim = (mean[1] - 3*np.sqrt(cov[1][1]),mean[1] + 3*np.sqrt(cov[1][1]))
-		sns.jointplot(x="x", y="y", data=df, kind="kde", xlim = xlim, ylim = ylim)		
+		sns.jointplot(x="x", y="y", data=df, kind="kde", stat_func= None, xlim = xlim, ylim = ylim)		
 		
 
 
