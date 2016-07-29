@@ -1,6 +1,7 @@
 import autograd.numpy as np
 from autograd import grad 
 from numpy.linalg import inv
+import tensorflow as tf
 
 def generate_data(n, W, sigx, dimx, dimz):
 	#factor analysis
@@ -35,6 +36,7 @@ def gradient_descent(objFunc, w):
 			break
 	return w,a
 
+
 def product_gaussians(mu1, mu2, sig1, sig2):
 	#sigma are matrices
 	assert mu1.shape == mu2.shape, "Mu dimensions are not the same"
@@ -58,15 +60,43 @@ def product_diag_gauss(mu1, mu2, sig1, sig2):
 	return mu, sig
 	
 	
-	
-def exponent_diag_gaugg(mu1, sig1, n):
+def exponent_diag_gauss(mu1, sig1, n):
 	#sig = (1/float(sig1))*n
 	#mu = sig*( (1/float(sig1))*mu1*n )
 	sig = (1/sig1)*n
 	mu = sig*( (1/sig1)*mu1*n )
 	return mu1, sig
+
+def tf_prod_gauss(mu1, mu2, sig1, sig2):
+	#assumes precision
+	prec1 = tf.matrix_inverse(sig1)
+	prec2 = tf.matrix_inverse(sig2)
+	prec = tf.add(prec1, prec2)
+	sig = tf.matrix_inverse(prec)
+	mu = tf.add( tf.matmul(prec1, mu1), tf.matmul(prec2, mu1) ) 
+
+	return mu, sig
+
+
 	
-	
+def tf_exponent_gauss(mu1, prec, n):
+	'''
+	takes in precision, and returns cov
+	'''
+	prec = tf.mul(n, prec)
+
+	sig = tf.matrix_inverse(prec)
+	mu = tf.matmul(prec, mu1)
+	mu = tf.mul(n, mu)
+
+	mu = tf.matmul(sig, mu)
+	return mu, sig
+
+
+
+
+
+
 	
 	
 	
