@@ -92,6 +92,21 @@ def tf_exponent_gauss(mu1, prec, n):
 	mu = tf.matmul(sig, mu)
 	return mu, sig
 
+def tf_evaluate_gauss(mu, prec, w):
+	print "EVAL"
+	t = tf.sub(w, mu) #6x1
+	tt = tf.transpose(t) #1x6
+
+	val = tf.matmul(tt, prec)
+	val = tf.matmul(val, t)
+	val =  tf.reshape(val, shape = [])
+	val = tf.mul(tf.constant(0.5, dtype = tf.float64), val)
+	val = tf.exp(val)
+
+	return val
+	#print "poo"
+
+	#return tf.constant(0.5, dtype = tf.float64)
 
 
 

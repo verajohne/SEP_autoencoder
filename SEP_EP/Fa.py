@@ -31,21 +31,35 @@ class Fa(object):
 		self.SEP_prior_prec = tf.constant(np.identity(f))
 
 		self.u = tf.Variable(np.zeros(f).reshape((f,1)))
-		#W = tf.reshape(theta, shape = [self.dimx, self.dimz])
-		#self.V = tf.Variable( np.diag(np.array([1e-6]*f)) )
-		self.V = tf.Variable( np.diag(np.array([1.0]*f)) )
-		#self.V = tf.Variable(np.zeros([f,f]))
+		self.V = tf.Variable(np.zeros([f,f]))
 
 		#latent variables -  mean and precision
 		self.R = tf.Variable(np.zeros([dimz, dimx]))
 		self.S = tf.constant(np.identity(dimz))
 
+
+	def get_q(self):
+		n = tf.constant(self.n, dtype = tf.float64)
+		prec = tf.mul(self.V, n)
+		
+		prec = tf.add(prec, self.SEP_prior_prec)
+		qsig = tf.matrix_inverse(prec)
+
+		mu = tf.matmul(self.V, self.u)
+		mu = tf.mul(n, mu)
+		qmu = tf.matmul(qsig, mu)
+
+		return qmu, qsig
+
+
 	def sample_theta(self):
 		#TODO change to precision
-		n = tf.constant(self.n - 1, dtype = tf.float64)
-		mu, sig = util.tf_exponent_gauss(self.u, self.V, n)
+		#n = tf.constant(self.n , dtype = tf.float64)
+		#mu, sig = util.tf_exponent_gauss(self.u, self.V, n)
 		#prior cov is identity- precision and covariance are identical
-		qmu, qsig = util.tf_prod_gauss(self.SEP_prior_mean, mu, self.SEP_prior_prec, sig)
+		#qmu, qsig = util.tf_prod_gauss(self.SEP_prior_mean, mu, self.SEP_prior_prec, sig)
+
+		qmu, qsig = self.get_q()
 		
 		qmu = tf.reshape(qmu, shape = [6,])
 		q = tf.contrib.distributions.MultivariateNormal(qmu, qsig)
@@ -54,7 +68,6 @@ class Fa(object):
 		W = tf.reshape(theta, shape = [self.dimx, self.dimz])
 		return W		
 		
-
 	def sample_z(self, x, num):
 		mu = tf.matmul(self.R, x)
 		g = gaussian.Gaussian_full(self.dimz, mu, self.S)
@@ -64,7 +77,7 @@ class Fa(object):
 		#z = z.eval()
 		pz = tf.contrib.distributions.MultivariateNormal(np.zeros(self.dimz), np.identity(self.dimz))
 		pz = pz.pdf(tf.reshape(z, [self.dimz,]))
-		z = tf.reshape(z, [2,1])
+		z = tf.reshape(z, [self.dimz,1])
 
 		mu = tf.matmul(w,z)
 		mu = tf.reshape(mu, shape = [self.dimx,])
@@ -75,14 +88,14 @@ class Fa(object):
 	def gamma(self, x, z, w):
 		num = self.evaluate_joint(x,z,w)
 
-		V_cov = tf.matrix_inverse(self.V) #Will this cause a problem -- inversion of 0
-		u = tf.reshape(self.u, shape = [6,])
-		q = tf.contrib.distributions.MultivariateNormal(u, V_cov)
-		theta = tf.reshape(w, shape = [6,])
-		pq = q.pdf(theta) ####CHECK THIS
+		#SEP part
+		f = self.dimx*self.dimz
+		u = tf.reshape(self.u, shape = [f,1])
+		theta = tf.reshape(w, shape = [f,1])
+		pq = util.tf_evaluate_gauss(u, self.V, theta)
 
-		mu = tf.matmul(self.R,x)
-
+		#recogniton model part
+		mu = tf.matmul(self.R,x)	#TODO add noise
 		mu = tf.reshape(mu, shape = [self.dimz,])
 		f = tf.contrib.distributions.MultivariateNormal(mu, self.S)
 		f = f.pdf(tf.reshape(z, shape = [self.dimz,]))
@@ -93,12 +106,17 @@ class Fa(object):
 		return tf.div(num, den)
 
 	def objective(self, x):
+		#TODO:
+		#modify to specify number of samples
 		z = self.sample_z(x, 1)
 		w = self.sample_theta()
-
+	
 		gamma = self.gamma(x,z,w)
 
 		return tf.mul(gamma, tf.log(gamma))
+
+	def get_log_likelihood(self):
+		pass
 
 	def fit(self, sess, n_iter, learning_rate):
 		
@@ -113,14 +131,20 @@ class Fa(object):
 		init = tf.initialize_all_variables()
 		sess.run(init)
 
+		obj_values = []
 
 		for j in xrange(n_iter):
 			for i in xrange(self.n):
 				x = self.observed[i].reshape((self.dimx,1))
-				#x = np.ones(3).reshape((3,1))
+			
 				_, R, u, V, of = sess.run((optimizer, self.R, self.u, self.V, objective_function), feed_dict = {x_ph:x} )
-				print of
+				
+				if i % self.n == 0:
+					obj_values.append(of)
+					#print of
+					ll = self.get_log_likelihood()
 
+		np.save('obj', of)
 		'''
 		TODO:
 		check that parameters are updated

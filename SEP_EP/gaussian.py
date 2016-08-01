@@ -31,6 +31,9 @@ class Gaussian_full(object):
         
     def sample(self, num_samples):
         eps = tf.random_normal([num_samples, self.size], dtype=tf.float64)
+        #print "SAMPLE: ", tf.transpose(tf.matmul(eps, self.Sigma)) 
+        output = tf.add(self.Mu, tf.transpose(tf.matmul(eps, self.Sigma)))
         output = self.Mu + tf.transpose(tf.matmul(eps, self.Sigma))        
         return output
         #return tf.constant(42.0)
+        #return self.Mu
